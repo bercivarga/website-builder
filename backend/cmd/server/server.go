@@ -13,10 +13,10 @@ const (
 )
 
 // Start initializes the application and starts the HTTP server.
-func Start() error {
+func Start() (*app.Application, error) {
 	app, err := app.NewApplication()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	server := &http.Server{
@@ -30,8 +30,8 @@ func Start() error {
 	err = server.ListenAndServe()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &app, nil
 }

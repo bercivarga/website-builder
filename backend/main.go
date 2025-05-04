@@ -5,8 +5,10 @@ import (
 )
 
 func main() {
-	err := server.Start()
+	app, err := server.Start()
 	if err != nil {
 		panic(err)
 	}
+
+	defer app.DB.Close()
 }

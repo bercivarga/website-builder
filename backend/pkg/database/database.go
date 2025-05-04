@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"time"
 
 	"github.com/pressly/goose/v3"
 
@@ -33,8 +34,8 @@ func Connect() (*sql.DB, error) {
 
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * 60) // 5 minutes
-	db.SetConnMaxIdleTime(5 * 60) // 5 minutes
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	// Test the connection
 	err = db.Ping()

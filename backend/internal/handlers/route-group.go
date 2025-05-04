@@ -1,6 +1,9 @@
 package handlers
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 const (
 	getMethod    = "GET"
@@ -32,7 +35,7 @@ func (rg *RouteGroup) Use(middleware func(http.Handler) http.Handler) {
 
 // Handle registers a handler for the specified pattern with applied middlewares
 func (rg *RouteGroup) Handle(method, pattern string, handler http.Handler) {
-	fullPattern := " " + method + " " + rg.prefix + pattern
+	fullPattern := method + " " + rg.prefix + pattern
 
 	// Apply middlewares in reverse order
 	for i := len(rg.middlewares) - 1; i >= 0; i-- {
@@ -40,6 +43,8 @@ func (rg *RouteGroup) Handle(method, pattern string, handler http.Handler) {
 	}
 
 	rg.mux.Handle(fullPattern, handler)
+
+	fmt.Printf("Registered route: %s\n", fullPattern)
 }
 
 // HandleFunc registers a handler function for the specified pattern
