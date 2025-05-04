@@ -1,10 +1,17 @@
-.PHONY: up down frontend backend db migrate migrate-create migrate-up migrate-down migrate-status test clean
+.PHONY: up down logs frontend backend db migrate migrate-create migrate-up migrate-down migrate-status migrate-reset test clean
 
 up:
 	docker-compose up -d
+	docker-compose logs -f frontend backend
 
 down:
 	docker-compose down
+
+logs:
+	docker-compose logs -f frontend backend
+
+logs-all:
+	docker-compose logs -f
 
 frontend:
 	cd frontend && npm start

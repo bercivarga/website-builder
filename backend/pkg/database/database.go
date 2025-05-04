@@ -3,7 +3,10 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"os"
+
+	"github.com/pressly/goose/v3"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
@@ -43,4 +46,28 @@ func Connect() (*sql.DB, error) {
 	fmt.Println("Connected to the database successfully!")
 
 	return db, nil
+}
+
+// MigrateFS applies database migrations using Goose with a custom file system.
+func MigrateFS(db *sql.DB, migrationsFS fs.FS, dir string) error {
+	goose.SetBaseFS(migrationsFS)
+	defer goose.SetBaseFS(nil)
+	return Migrate(db, dir)
+}
+
+// Migrate applies database migrations using Goose.
+func Migrate(db *sql.DB, dir string) error {
+	err := goose.SetDialect("postgres")
+	if err != nil {
+		fmt.Println("Error setting dialect:", err)
+		return err
+	}
+
+	err = goose.Up(db, dir)
+	if err != nil {
+		fmt.Println("Error running migrations:", err)
+		return err
+	}
+
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/bercivarga/website-builder/migrations"
 	"github.com/bercivarga/website-builder/pkg/database"
 	"github.com/joho/godotenv"
 )
@@ -30,6 +31,12 @@ func NewApplication() (Application, error) {
 	}
 
 	defer db.Close()
+
+	// Migrate the database
+	err = database.MigrateFS(db, migrations.FS, ".")
+	if err != nil {
+		return Application{}, err
+	}
 
 	// Initialize logger
 	logger := log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
