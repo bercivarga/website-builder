@@ -34,6 +34,7 @@ func addAuthRoutes(mux *http.ServeMux, app *app.Application) {
 
 func addUserRoutes(mux *http.ServeMux, app *app.Application) {
 	userGroup := CreateRouteGroup(mux, "/v1/user")
+	userGroup.Use(CORS)
 	userGroup.Use(LoggingMiddleware)
 	userGroup.Use(AuthMiddleware)
 

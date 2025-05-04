@@ -43,8 +43,20 @@ func (rg *RouteGroup) Handle(method, pattern string, handler http.Handler) {
 	}
 
 	rg.mux.Handle(fullPattern, handler)
-
 	fmt.Printf("Registered route: %s\n", fullPattern)
+
+	// Also register OPTIONS for this route if it's not already OPTIONS
+	if method != "OPTIONS" {
+		optionsPattern := "OPTIONS " + rg.prefix + pattern
+		rg.mux.HandleFunc(optionsPattern, func(w http.ResponseWriter, r *http.Request) {
+			// Let middleware handle it
+			for i := len(rg.middlewares) - 1; i >= 0; i-- {
+				handler = rg.middlewares[i](handler)
+			}
+			handler.ServeHTTP(w, r)
+		})
+		fmt.Printf("Registered OPTIONS route: %s\n", optionsPattern)
+	}
 }
 
 // HandleFunc registers a handler function for the specified pattern

@@ -7,7 +7,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:8080
+      - VITE_APP_API_URL=http://localhost:8080
 
   backend:
     build: ./backend
