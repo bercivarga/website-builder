@@ -14,7 +14,6 @@ const fetchApi = async (url: string, options: RequestInit = {}) => {
   const response = await fetch(fullUrl, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
       ...options.headers,
     },
   });
@@ -23,7 +22,11 @@ const fetchApi = async (url: string, options: RequestInit = {}) => {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  return response.json();
+  if (options?.headers?.['Content-Type' as keyof typeof options.headers] === 'application/json') {
+    return response.json();
+  }
+
+  return response;
 }
 
 const get = async (url: string, options: RequestInit = {}) => {

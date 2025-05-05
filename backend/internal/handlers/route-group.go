@@ -1,94 +1,64 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 )
 
-const (
-	getMethod    = "GET"
-	postMethod   = "POST"
-	putMethod    = "PUT"
-	deleteMethod = "DELETE"
-)
-
-// RouteGroup represents a collection of routes with a common prefix and shared middleware
+// RouteGroup allows grouping routes with a common prefix and middleware
 type RouteGroup struct {
-	mux         *http.ServeMux
-	prefix      string
-	middlewares []func(http.Handler) http.Handler
+	prefix     string
+	mux        *http.ServeMux
+	middleware []func(http.Handler) http.Handler
 }
 
-// CreateRouteGroup creates a new route group with the specified prefix
+// CreateRouteGroup creates a new route group with the given prefix
 func CreateRouteGroup(mux *http.ServeMux, prefix string) *RouteGroup {
 	return &RouteGroup{
-		mux:         mux,
-		prefix:      prefix,
-		middlewares: []func(http.Handler) http.Handler{},
+		prefix: prefix,
+		mux:    mux,
 	}
 }
 
 // Use adds middleware to the route group
 func (rg *RouteGroup) Use(middleware func(http.Handler) http.Handler) {
-	rg.middlewares = append(rg.middlewares, middleware)
+	rg.middleware = append(rg.middleware, middleware)
 }
 
-// Handle registers a handler for the specified pattern with applied middlewares
-func (rg *RouteGroup) Handle(method, pattern string, handler http.Handler) {
-	fullPattern := method + " " + rg.prefix + pattern
+// Get adds a GET route to the group
+func (rg *RouteGroup) Get(path string, handler http.HandlerFunc) {
+	rg.handle(http.MethodGet, path, handler)
+}
 
-	// Apply middlewares in reverse order
-	for i := len(rg.middlewares) - 1; i >= 0; i-- {
-		handler = rg.middlewares[i](handler)
+// Post adds a POST route to the group
+func (rg *RouteGroup) Post(path string, handler http.HandlerFunc) {
+	rg.handle(http.MethodPost, path, handler)
+}
+
+// Put adds a PUT route to the group
+func (rg *RouteGroup) Put(path string, handler http.HandlerFunc) {
+	rg.handle(http.MethodPut, path, handler)
+}
+
+// Delete adds a DELETE route to the group
+func (rg *RouteGroup) Delete(path string, handler http.HandlerFunc) {
+	rg.handle(http.MethodDelete, path, handler)
+}
+
+// handle adds a route with the given method to the group
+func (rg *RouteGroup) handle(method, path string, handler http.HandlerFunc) {
+	// Apply middleware chain in reverse order
+	wrappedHandler := http.Handler(handler)
+	for i := len(rg.middleware) - 1; i >= 0; i-- {
+		wrappedHandler = rg.middleware[i](wrappedHandler)
 	}
 
-	rg.mux.Handle(fullPattern, handler)
-	fmt.Printf("Registered route: %s\n", fullPattern)
-
-	// Also register OPTIONS for this route if it's not already OPTIONS
-	if method != "OPTIONS" {
-		optionsPattern := "OPTIONS " + rg.prefix + pattern
-		rg.mux.HandleFunc(optionsPattern, func(w http.ResponseWriter, r *http.Request) {
-			// Let middleware handle it
-			for i := len(rg.middlewares) - 1; i >= 0; i-- {
-				handler = rg.middlewares[i](handler)
-			}
-			handler.ServeHTTP(w, r)
-		})
-		fmt.Printf("Registered OPTIONS route: %s\n", optionsPattern)
-	}
-}
-
-// HandleFunc registers a handler function for the specified pattern
-func (rg *RouteGroup) HandleFunc(method, pattern string, handler http.HandlerFunc) {
-	rg.Handle(method, pattern, handler)
-}
-
-// Get registers a GET handler for the specified pattern
-func (rg *RouteGroup) Get(pattern string, handler http.HandlerFunc) {
-	rg.Handle(getMethod, pattern, handler)
-}
-
-// Post registers a POST handler for the specified pattern
-func (rg *RouteGroup) Post(pattern string, handler http.HandlerFunc) {
-	rg.Handle(postMethod, pattern, handler)
-}
-
-// Put registers a PUT handler for the specified pattern
-func (rg *RouteGroup) Put(pattern string, handler http.HandlerFunc) {
-	rg.Handle(putMethod, pattern, handler)
-}
-
-// Delete registers a DELETE handler for the specified pattern
-func (rg *RouteGroup) Delete(pattern string, handler http.HandlerFunc) {
-	rg.Handle(deleteMethod, pattern, handler)
-}
-
-// Group returns a new child route group with a concatenated prefix
-func (rg *RouteGroup) Group(prefix string) *RouteGroup {
-	return &RouteGroup{
-		mux:         rg.mux,
-		prefix:      rg.prefix + prefix,
-		middlewares: rg.middlewares, // Inherit parent middlewares
-	}
+	// Register the route with method and path
+	fullPath := rg.prefix + path
+	rg.mux.HandleFunc(fullPath, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		wrappedHandler.ServeHTTP(w, r)
+	})
 }

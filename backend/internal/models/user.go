@@ -1,15 +1,18 @@
 package models
 
-import "database/sql"
+import (
+	"database/sql"
+	"time"
+)
 
 // User represents a user in the system
 type User struct {
-	ID           int    `json:"id"`
-	Username     string `json:"username"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"-"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	ID           int       `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"` // Don't include in JSON
+	Username     string    `json:"username"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // UserStore is a struct that holds the database connection
@@ -21,7 +24,7 @@ type UserStore struct {
 type UserRepository interface {
 	CreateUser(user *User) error
 	GetUserByID(id int) (*User, error)
-	GetUserByUsername(username string) (*User, error)
+	GetUserByEmail(email string) (*User, error)
 	UpdateUser(user *User) error
 	DeleteUser(id int) error
 }
@@ -33,35 +36,29 @@ func NewUserStore(db *sql.DB) *UserStore {
 
 // CreateUser inserts a new user into the database
 func (s *UserStore) CreateUser(user *User) error {
-	query := `INSERT INTO users (username, email, password_hash, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`
-	_, err := s.DB.Exec(query, user.Username, user.Email, user.PasswordHash, user.CreatedAt, user.UpdatedAt)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	query := `INSERT INTO users (email, password_hash, username) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at`
+	err := s.DB.QueryRow(query, user.Email, user.PasswordHash, user.Username).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	return err
 }
 
 // GetUserByID retrieves a user by ID from the database
 func (s *UserStore) GetUserByID(id int) (*User, error) {
-	query := `SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, email, password_hash, username, created_at, updated_at FROM users WHERE id = $1`
 	row := s.DB.QueryRow(query, id)
-
 	var user User
-	err := row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Username, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-// GetUserByUsername retrieves a user by username from the database
-func (s *UserStore) GetUserByUsername(username string) (*User, error) {
-	query := `SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE username = $1`
-	row := s.DB.QueryRow(query, username)
-
+// GetUserByEmail retrieves a user by email from the database
+func (s *UserStore) GetUserByEmail(email string) (*User, error) {
+	query := `SELECT id, email, password_hash, username, created_at, updated_at FROM users WHERE email = $1`
+	row := s.DB.QueryRow(query, email)
 	var user User
-	err := row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
+	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.Username, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +67,8 @@ func (s *UserStore) GetUserByUsername(username string) (*User, error) {
 
 // UpdateUser updates an existing user in the database
 func (s *UserStore) UpdateUser(user *User) error {
-	query := `UPDATE users SET username = $1, email = $2, password_hash = $3, updated_at = $4 WHERE id = $5`
-	_, err := s.DB.Exec(query, user.Username, user.Email, user.PasswordHash, user.UpdatedAt, user.ID)
+	query := `UPDATE users SET email = $1, password_hash = $2, username = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4`
+	_, err := s.DB.Exec(query, user.Email, user.PasswordHash, user.Username, user.ID)
 	return err
 }
 

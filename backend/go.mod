@@ -7,7 +7,10 @@ require (
 	github.com/lib/pq v1.10.9
 )
 
+require github.com/rs/cors v1.11.1 // indirect
+
 require (
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/pressly/goose/v3 v3.24.2 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect

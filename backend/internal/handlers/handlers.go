@@ -4,51 +4,41 @@ import (
 	"net/http"
 
 	"github.com/bercivarga/website-builder/internal/app"
+	"github.com/rs/cors"
 )
 
 // SetupHandlers initializes the HTTP routes for the application.
-func SetupHandlers(app *app.Application) *http.ServeMux {
+func SetupHandlers(app *app.Application) http.Handler {
 	mux := http.NewServeMux()
-
-	addPublicRoutes(mux)
+	addPublicRoutes(mux, app)
 	addAuthRoutes(mux, app)
 	addUserRoutes(mux, app)
-
-	return mux
+	return cors.Default().Handler(mux)
 }
 
-func addPublicRoutes(mux *http.ServeMux) {
+func addPublicRoutes(mux *http.ServeMux, app *app.Application) {
 	publicGroup := CreateRouteGroup(mux, "/v1")
-	publicGroup.Use(LoggingMiddleware)
-
+	publicGroup.Use(LoggingMiddleware(app.Logger))
 	publicGroup.Get("/health", healthCheckHandler)
 }
 
 func addAuthRoutes(mux *http.ServeMux, app *app.Application) {
 	authGroup := CreateRouteGroup(mux, "/v1/auth")
-	authGroup.Use(LoggingMiddleware)
-
-	authGroup.Post("/register", registerUserHandler)
-	authGroup.Post("/login", loginUserHandler)
+	authGroup.Use(LoggingMiddleware(app.Logger))
+	authGroup.Post("/register", app.AuthService.Register)
+	authGroup.Post("/login", app.AuthService.Login)
+	authGroup.Post("/logout", app.AuthService.Logout)
+	authGroup.Post("/refresh", app.AuthService.Refresh)
 }
 
 func addUserRoutes(mux *http.ServeMux, app *app.Application) {
 	userGroup := CreateRouteGroup(mux, "/v1/user")
-	userGroup.Use(CORS)
-	userGroup.Use(LoggingMiddleware)
-	userGroup.Use(AuthMiddleware)
-
+	userGroup.Use(LoggingMiddleware(app.Logger))
+	userGroup.Use(app.AuthService.AuthMiddleware)
 	userGroup.Get("/{id}", app.UserService.GetUser)
 }
 
-func registerUserHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("User registration"))
-}
-
-func loginUserHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("User login"))
-}
-
 func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }

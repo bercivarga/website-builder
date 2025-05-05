@@ -44,6 +44,26 @@ func (s *UserService) CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User created successfully"))
 }
 
+// GetMe handles the retrieval of the current user
+func (s *UserService) GetMe(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("userID").(int)
+	if userID == 0 {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := s.store.GetUserByID(userID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	// write user data as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+
 // GetUser handles the retrieval of a user by ID
 func (s *UserService) GetUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")

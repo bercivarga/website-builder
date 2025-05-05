@@ -1,35 +1,43 @@
 package handlers
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+	"time"
+)
 
 // LoggingMiddleware is a middleware that logs incoming requests and their details.
-func LoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Log request details
-		next.ServeHTTP(w, r)
-	})
+func LoggingMiddleware(logger *log.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			// Wrap the ResponseWriter to capture status code
+			wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+			next.ServeHTTP(wrapped, r)
+
+			// Log request details
+			duration := time.Since(start)
+			logger.Printf(
+				"%s %s %s %d %v",
+				r.RemoteAddr,
+				r.Method,
+				r.URL.Path,
+				wrapped.statusCode,
+				duration,
+			)
+		})
+	}
 }
 
-// AuthMiddleware is a middleware that checks for authentication.
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check authentication
-		next.ServeHTTP(w, r)
-	})
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
 }
 
-// CORS is a middleware that sets CORS headers for cross-origin requests.
-func CORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
