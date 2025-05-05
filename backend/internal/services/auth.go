@@ -132,6 +132,13 @@ func (s *AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Delete old tokens
+	err = s.store.DeleteTokensByUserID(user.ID)
+	if err != nil {
+		http.Error(w, "Failed to delete old tokens", http.StatusInternalServerError)
+		return
+	}
+
 	// Store access token in database
 	accessTokenDB := &models.Token{
 		UserID:    user.ID,
@@ -230,17 +237,31 @@ func (s *AuthService) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if token exists in database
-	tokenDB, err := s.store.GetTokenByUserID(claims.UserID)
+	// Check if refresh token exists in database
+	refreshToken, err := s.store.GetRefreshTokenByUserID(claims.UserID) // Need this method
 	if err != nil {
-		http.Error(w, "Token not found", http.StatusUnauthorized)
+		http.Error(w, "Refresh token not found", http.StatusUnauthorized)
 		return
 	}
 
 	// Verify token ID matches
-	if tokenDB.Token != claims.TokenID {
+	if refreshToken.Token != claims.TokenID {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
+	}
+
+	// Check if refresh token is expired
+	if time.Now().After(refreshToken.ExpiresAt) {
+		// Delete expired refresh token
+		s.store.DeleteToken(refreshToken.ID)
+		http.Error(w, "Refresh token expired", http.StatusUnauthorized)
+		return
+	}
+
+	// Delete old access token for this user (if exists)
+	oldToken, err := s.store.GetTokenByUserID(claims.UserID)
+	if err == nil {
+		s.store.DeleteToken(oldToken.ID)
 	}
 
 	// Generate new access token

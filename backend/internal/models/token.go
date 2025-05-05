@@ -58,7 +58,28 @@ func (s *TokenStore) GetTokenByID(id int) (*Token, error) {
 
 // GetTokenByUserID retrieves a token by user ID from the database
 func (s *TokenStore) GetTokenByUserID(userID int) (*Token, error) {
-	query := `SELECT id, user_id, token, token_type, created_at, updated_at, expires_at FROM token WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`
+	query := `SELECT id, user_id, token, token_type, created_at, updated_at, expires_at 
+	FROM token 
+	WHERE user_id = $1 AND token_type = 'access'
+	ORDER BY created_at DESC LIMIT 1`
+
+	row := s.DB.QueryRow(query, userID)
+
+	var token Token
+	err := row.Scan(&token.ID, &token.UserID, &token.Token, &token.TokenType, &token.CreatedAt, &token.UpdatedAt, &token.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &token, nil
+}
+
+// GetRefreshTokenByUserID retrieves the refresh token by user ID from the database
+func (s *TokenStore) GetRefreshTokenByUserID(userID int) (*Token, error) {
+	query := `SELECT id, user_id, token, token_type, created_at, updated_at, expires_at 
+						FROM token 
+						WHERE user_id = $1 AND token_type = 'refresh'
+						ORDER BY created_at DESC LIMIT 1`
 	row := s.DB.QueryRow(query, userID)
 	var token Token
 	err := row.Scan(&token.ID, &token.UserID, &token.Token, &token.TokenType, &token.CreatedAt, &token.UpdatedAt, &token.ExpiresAt)

@@ -13,7 +13,16 @@ func SetupHandlers(app *app.Application) http.Handler {
 	addPublicRoutes(mux, app)
 	addAuthRoutes(mux, app)
 	addUserRoutes(mux, app)
-	return cors.Default().Handler(mux)
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173", "your-frontend-url"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "Authorization"},
+		AllowCredentials: true,
+		// Debug:            true, // Enable for debugging
+	})
+
+	return c.Handler(mux)
 }
 
 func addPublicRoutes(mux *http.ServeMux, app *app.Application) {
@@ -35,6 +44,7 @@ func addUserRoutes(mux *http.ServeMux, app *app.Application) {
 	userGroup := CreateRouteGroup(mux, "/v1/user")
 	userGroup.Use(LoggingMiddleware(app.Logger))
 	userGroup.Use(app.AuthService.AuthMiddleware)
+	userGroup.Get("/me", app.UserService.GetMe)
 	userGroup.Get("/{id}", app.UserService.GetUser)
 }
 

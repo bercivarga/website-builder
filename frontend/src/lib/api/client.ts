@@ -1,3 +1,5 @@
+import { getJWT } from "../../utils/jwt";
+
 const fetchApi = async (url: string, options: RequestInit = {}) => {
   const baseUrl = import.meta.env.VITE_APP_API_URL;
 
@@ -10,11 +12,18 @@ const fetchApi = async (url: string, options: RequestInit = {}) => {
   }
 
   const fullUrl = baseUrl + "/v1" + url;
+  
+  const token = getJWT();
 
   const response = await fetch(fullUrl, {
     ...options,
     headers: {
       ...options.headers,
+      ...(
+          token && !options.headers?.['Authorization' as keyof typeof options.headers]
+          ? { Authorization: `Bearer ${token}` }
+          : {}
+        )
     },
   });
 

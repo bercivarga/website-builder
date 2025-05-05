@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -46,11 +47,9 @@ func (s *UserService) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // GetMe handles the retrieval of the current user
 func (s *UserService) GetMe(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetMe called")
 	userID := r.Context().Value("userID").(int)
-	if userID == 0 {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
+	fmt.Println("User ID from context:", userID)
 
 	user, err := s.store.GetUserByID(userID)
 	if err != nil {
@@ -58,10 +57,15 @@ func (s *UserService) GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	// write user data as JSON
+	// Set Content-Type and encode JSON in one step
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+	}{
+		Username: user.Username,
+		Email:    user.Email,
+	})
 }
 
 // GetUser handles the retrieval of a user by ID
